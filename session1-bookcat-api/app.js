@@ -497,14 +497,16 @@ app.put('/books/:isbn/copies/:copyNo', async (req, res) => {
 });
 
 
-// DELETE one copy of a book
+// LAB 7: DELETE one copy of a book - modified by Lab 10: DELETE /books/:isbn/copies/:copyNo  -> 204 | 400 | 404 | 500
 app.delete('/books/:isbn/copies/:copyNo', async (req, res) => {
+  const { error, value } = copySchema.validate(req.params); //o /copies/0 gets 400 before any query.
+  if (error) return res.status(400).json({ error: error.details[0].message });
   let connection;
   try {
     connection = await sql.connect(dbConfig);
     const request = connection.request();
-    request.input('isbn', sql.Char(10), req.params.isbn);
-    request.input('copyNo', sql.TinyInt, req.params.copyNo);
+    request.input('isbn', sql.Char(10), value.isbn);
+    request.input('copyNo', sql.TinyInt, value.copyNo);
     const result = await request.query(
       'DELETE FROM BookCopy WHERE ISBN = @isbn AND CopyNo = @copyNo'
     );
@@ -519,6 +521,7 @@ app.delete('/books/:isbn/copies/:copyNo', async (req, res) => {
     if (connection) await connection.close();
   }
 });
+
 
 /* -----------------------------------VALIDATION (session 4)--------------------------------------- */
 //STEP1: checkAvailable looks the copy up. It gives back null if there is no such copy,
