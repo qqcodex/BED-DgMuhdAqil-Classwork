@@ -311,18 +311,24 @@ app.delete('/publishers/:id', async (req, res) => {
 });
 
 /* -----------------------------------BOOK--------------------------------------- */
-// Lab 6 modified by Lab 10: GET all books 
+// Lab 6 modified by Lab 10: GET all books + optional query params title and bookCat  -> 200 list | 500
 app.get('/books', async (req, res) => {
-  const { title } = req.query;
+  // Destructure the optional query params from the URL,
+  //  e.g. /books?title=harry&bookCat=Fiction
+  const { title, bookCat } = req.query; 
   let connection;
   try {
     connection = await sql.connect(dbConfig);
     const request = connection.request();
-    let query = 'SELECT ISBN, Title, YearPublish, PublisherID, BookCat FROM Book';
+    let query = 'SELECT ISBN, Title, YearPublish, PublisherID, BookCat FROM Book WHERE 1=1';
     if (title) {
-      query += " WHERE Title LIKE '%' + @title + '%'";
+      query += " AND Title LIKE '%' + @title + '%'";
       request.input('title', sql.VarChar(200), title);
     }
+    if (bookCat) {
+      query += " AND BookCat = @bookCat";
+      request.input('bookCat', sql.VarChar(100), bookCat);
+    } 
     const result = await request.query(query);
     res.status(200).json(result.recordset);
   } catch (err) {
@@ -332,6 +338,7 @@ app.get('/books', async (req, res) => {
     if (connection) await connection.close();
   }
 });
+
 
 // GET one book by ISBN
 app.get('/books/:isbn', async (req, res) => {
