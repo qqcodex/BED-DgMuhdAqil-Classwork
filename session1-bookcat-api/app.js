@@ -327,6 +327,31 @@ app.get('/books/:isbn', async (req, res) => {
   }
 });
 
+// PUT: change a book's title (and other columns if needed)
+app.put('/books/:isbn', async (req, res) => {
+  let connection;
+  try {
+    connection = await sql.connect(dbConfig);
+    const result = await connection.request()
+      .input('isbn', sql.Char(10), req.params.isbn)
+      .input('title', sql.VarChar(100), req.body.title)
+      // ...one .input() per Book column
+      .query(
+        'UPDATE Book SET Title = @title /*, other columns */ ' +
+        'OUTPUT INSERTED.* WHERE ISBN = @isbn'
+      );
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ error: 'Not found' });
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+
 // POST a new book and its author, in one transaction
 app.post('/books', async (req, res) => {
   const { isbn, title, yearPublish, publisherId, bookCat, authorId } = req.body;
