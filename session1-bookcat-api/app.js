@@ -57,6 +57,8 @@ app.get('/about', (req, res) => {
 
 
 /* -----------------------------------AUTHORS--------------------------------------- */
+// SESSION 3 
+
 app.get('/authors', async (req, res) => {
   let connection;
   try {
@@ -98,6 +100,32 @@ app.get('/authors/:id', async (req, res) => {
     if (connection) await connection.close();
   }
 });
+
+// GET all books by an author with search parameter for author id (SESSION 4 EXTRAS)
+app.get('/authors/:id/books', async (req, res) => {
+  const authorId = parseInt(req.params.id);
+  if (isNaN(authorId)) {
+    return res.status(400).json({ error: 'Invalid author id' });
+  }
+  let connection;
+  try {
+    connection = await sql.connect(dbConfig);
+    const result = await connection.request()
+      .input('authorId', sql.Int, req.params.id)
+      .query(
+        'SELECT b.* FROM Book b ' +
+        'JOIN BookAuthor ba ON b.ISBN = ba.ISBN ' +
+        'WHERE ba.AuthorID = @authorId'
+      );
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
 
 // POST a new author
 app.post('/authors', async (req, res) => {
@@ -319,6 +347,27 @@ app.get('/books/:isbn', async (req, res) => {
       return res.status(404).json({ error: 'Not found' });
     }
     res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// get book by ISBN and include its authors
+app.get('/books/:isbn/authors', async (req, res) => {
+  let connection;
+  try {
+    connection = await sql.connect(dbConfig);
+    const result = await connection.request()
+      .input('isbn', sql.Char(10), req.params.isbn)
+      .query(
+            'SELECT a.* FROM Author a ' +
+            'JOIN BookAuthor ba ON a.AuthorID = ba.AuthorID ' +
+            'WHERE ba.ISBN = @isbn'
+            );
+    res.status(200).json(result.recordset);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
